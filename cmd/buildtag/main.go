@@ -18,7 +18,7 @@ var (
 
 func init() {
 	flag.StringVar(&flagTags, "tags", "", "comma separated tags")
-	flag.StringVar(&flagFormat, "f", "{{.Constraint}} {{.File}}", "output format")
+	flag.StringVar(&flagFormat, "f", "{{.File}}:{{.Constraint}}", "output format")
 	flag.Parse()
 }
 
