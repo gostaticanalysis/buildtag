@@ -20,9 +20,9 @@ go1.9 /Users/tenntenn/go/pkg/mod/golang.org/x/net@v0.0.0-20220107192237-5cfca573
 ```
 
 ```
-$ buildtag -tags go1.7 golang.org/x/net/context
-go1.7 /Users/tenntenn/go/pkg/mod/golang.org/x/net@v0.0.0-20220107192237-5cfca573fb4d/context/go17.go
-!go1.9 /Users/tenntenn/go/pkg/mod/golang.org/x/net@v0.0.0-20220107192237-5cfca573fb4d/context/pre_go19.go
+$ buildtag -tag "^go1\.*" golang.org/x/net/context
+/Users/tenntenn/go/pkg/mod/golang.org/x/net@v0.0.0-20220111093109-d55c255bac03/context/go17.go:go1.7
+/Users/tenntenn/go/pkg/mod/golang.org/x/net@v0.0.0-20220111093109-d55c255bac03/context/go19.go:go1.9
 ```
 
 ```

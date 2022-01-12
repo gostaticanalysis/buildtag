@@ -5,19 +5,19 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
+	"regexp"
 	"text/template"
 
 	"github.com/gostaticanalysis/buildtag"
 )
 
 var (
-	flagTags   string
+	flagTag    string
 	flagFormat string
 )
 
 func init() {
-	flag.StringVar(&flagTags, "tags", "", "comma separated tags")
+	flag.StringVar(&flagTag, "tag", "", "a regular expression of tag")
 	flag.StringVar(&flagFormat, "f", "{{.File}}:{{.Constraint}}", "output format")
 	flag.Parse()
 }
@@ -34,7 +34,6 @@ func run(args []string) error {
 		return errors.New("package patterns must be specified")
 	}
 
-	ok := createEvalFunc()
 	patterns := args
 	info, err := buildtag.Load(patterns...)
 	if err != nil {
@@ -46,7 +45,12 @@ func run(args []string) error {
 		return err
 	}
 
-	for _, e := range info.Matches(ok) {
+	reg, err := regexp.Compile(flagTag)
+	if err != nil {
+		return err
+	}
+
+	for _, e := range info.FindByRegexp(reg) {
 		if err := tmpl.Execute(os.Stdout, e); err != nil {
 			return err
 		}
@@ -54,24 +58,4 @@ func run(args []string) error {
 	}
 
 	return nil
-}
-
-func createEvalFunc() func(tag string) bool {
-	if flagTags == "" {
-		return nil
-	}
-
-	tags := strings.Split(flagTags, ",")
-	for i := range tags {
-		tags[i] = strings.TrimSpace(tags[i])
-	}
-
-	return func(tag string) bool {
-		for i := range tags {
-			if tag == tags[i] {
-				return true
-			}
-		}
-		return false
-	}
 }
