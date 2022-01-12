@@ -4,6 +4,7 @@ import (
 	"go/build/constraint"
 	"go/token"
 	"go/types"
+	"regexp"
 )
 
 type Entry struct {
@@ -46,4 +47,28 @@ func (info *Info) Matches(ok func(tag string) bool) []Entry {
 	}
 
 	return matches
+}
+
+func (info *Info) Find(f func(constraint string) bool) []Entry {
+	var founds []Entry
+
+	for i := range info.Entries {
+		if f(info.Entries[i].Constraint.String()) {
+			founds = append(founds, info.Entries[i])
+		}
+	}
+
+	return founds
+}
+
+func (info *Info) FindByRegexp(reg *regexp.Regexp) []Entry {
+	var founds []Entry
+
+	for i := range info.Entries {
+		if reg.MatchString(info.Entries[i].Constraint.String()) {
+			founds = append(founds, info.Entries[i])
+		}
+	}
+
+	return founds
 }
