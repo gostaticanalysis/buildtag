@@ -9,7 +9,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-const doc = "timebomb is ..."
+const doc = "timebomb finds suspicious buid tags"
 
 // latest version of Go (including dev version)
 var (
