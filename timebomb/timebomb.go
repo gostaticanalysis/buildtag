@@ -1,8 +1,13 @@
 package timebomb
 
 import (
+	"go/token"
+	"go/types"
+	"path/filepath"
+	"strconv"
 	"strings"
 
+	"github.com/gostaticanalysis/analysisutil"
 	"github.com/gostaticanalysis/buildtag"
 	"github.com/tenntenn/goplayground"
 	"golang.org/x/mod/semver"
@@ -15,6 +20,10 @@ const doc = "timebomb finds suspicious buid tags"
 var (
 	latest  string
 	release string
+)
+
+var (
+	flagDeps bool
 )
 
 func init() {
@@ -59,11 +68,38 @@ var Analyzer = &analysis.Analyzer{
 	},
 }
 
-type hasReleaseTag struct{}
+func init() {
+	Analyzer.Flags.BoolVar(&flagDeps, "deps", true, "print diagnostics of dependent packages")
+}
+
+type constraint struct {
+	Value    string
+	Position token.Position
+}
+
+type hasReleaseTag struct {
+	Constraints []constraint
+}
 
 func (*hasReleaseTag) AFact() {}
 
 func run(pass *analysis.Pass) (interface{}, error) {
+
+	// dependent packages
+	if flagDeps {
+		for _, fact := range pass.AllPackageFacts() {
+			f, ok := fact.Fact.(*hasReleaseTag)
+			if !ok {
+				continue
+			}
+
+			for _, c := range f.Constraints {
+				pos := importedPos(pass, fact.Package)
+				pass.Reportf(pos, "%s has a suspicious build constraint (%s) in %s because latest version (including dev version) is %s", fact.Package, c.Value, filepath.Base(c.Position.String()), release)
+			}
+		}
+	}
+
 	info := pass.ResultOf[buildtag.Analyzer].(*buildtag.Info)
 
 	entries := info.Find(func(tag string) bool {
@@ -78,9 +114,39 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		return nil, nil
 	}
 
+	fact := &hasReleaseTag{
+		Constraints: make([]constraint, len(entries)),
+	}
+
 	for i := range entries {
+		fact.Constraints[i] = constraint{
+			Position: pass.Fset.Position(entries[i].Pos),
+			Value:    entries[i].Constraint.String(),
+		}
 		pass.Reportf(entries[i].Pos, "%s: the build constraint is suspicious because latest version (including dev version) is %s", entries[i].Constraint, release)
 	}
 
+	pass.ExportPackageFact(fact)
+
 	return nil, nil
+}
+
+func importedPos(pass *analysis.Pass, pkg *types.Package) token.Pos {
+	fs := pass.Files
+	if len(fs) == 0 {
+		return token.NoPos
+	}
+
+	for _, f := range fs {
+		for _, i := range f.Imports {
+			path, err := strconv.Unquote(i.Path.Value)
+			if err != nil {
+				continue
+			}
+			if analysisutil.RemoveVendor(path) == pkg.Path() {
+				return i.Pos()
+			}
+		}
+	}
+	return token.NoPos
 }
